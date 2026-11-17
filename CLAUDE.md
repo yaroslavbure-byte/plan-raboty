@@ -11,7 +11,7 @@
 ## Выпуск новой версии (пользователь ничего не делает)
 1. Поднять `version` в `package.json`.
 2. `npm run build` локально для проверки (tsc + vite).
-3. Коммит в `main`, `git tag vX.Y.Z`, push ветки и тега.
+3. Коммит и push в `main` (теги пушить не нужно — прокси их не пропускает; релиз vX.Y.Z создаёт workflow сам по версии из package.json).
 4. GitHub Actions (`.github/workflows/release.yml`) собирает установщик и публикует Release → Windows-приложение само скачивает и показывает «Перезапустить и обновить».
 5. Netlify (сайт willowy-semifreddo-fedcc8) сам собирает сайт из `main` → PWA перезагружается при открытии (version.json).
 6. Если менялась схема БД — новая миграция в `supabase/migrations/`; без секрета `SUPABASE_DB_URL` пользователь запускает её через жёлтую плашку в приложении (кнопка копирования SQL).
