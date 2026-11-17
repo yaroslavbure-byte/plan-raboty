@@ -1,0 +1,45 @@
+# Выпуск версии: поднять "version" в package.json, закоммитить в main и запушить тег vX.Y.Z.
+#  • windows  — собирает установщик и публикует GitHub Release → приложение само скачивает обновление
+#  • database — (если задан секрет SUPABASE_DB_URL) применяет supabase/migrations/*.sql
+# Сайт для телефона собирает Netlify сам при push в main (см. netlify.toml).
+name: release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply migrations
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then echo "SUPABASE_DB_URL не задан — пропускаю"; exit 0; fi
+          for f in supabase/migrations/*.sql; do echo "== $f"; psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q -f "$f"; done
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - name: Build installer
+        shell: bash
+        run: |
+          eval "$(grep -E '^\s*VITE_SUPABASE_(URL|ANON_KEY)' netlify.toml | sed -E 's/^\s*(\w+) = (.*)$/export \1=\2/')"
+          export VITE_UPDATE_FEED="https://github.com/${{ github.repository }}/releases/latest/download"
+          npm run build
+          npx electron-builder --win --x64 --publish never
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/latest.yml
+            release/*.exe
+            release/*.blockmap
